@@ -29,7 +29,7 @@ func determineCommand() (string, []string) {
 }
 
 func handleGitGetInvocation() (string, []string) {
-	if len(os.Args) > 1 && (os.Args[1] == "get" || os.Args[1] == "list") {
+	if len(os.Args) > 1 && (os.Args[1] == "get" || os.Args[1] == "list" || os.Args[1] == "cd") {
 		return os.Args[1], os.Args[2:]
 	}
 
@@ -54,6 +54,8 @@ func executeCommand(command string, args []string) {
 		runGet(args)
 	case "list":
 		runList(args)
+	case "cd":
+		runCd(args)
 	default:
 		runGet(os.Args[1:])
 	}

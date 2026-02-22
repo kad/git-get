@@ -92,10 +92,12 @@ Acknowledgments
 \fBgit-get\fP solves the problem of manually organizing multiple Git repositories. Instead of scattered clones in random directories, it creates a clean, predictable directory structure based on repository URLs, similar to Go's \fBgo get\fR command.
 
 .PP
-It provides two commands through a single binary:
+It provides three commands through a single binary:
 - \fB\fBgit get\fR\fP - Clones repositories into an organized directory tree
 .br
 - \fB\fBgit list\fR\fP - Shows the status of all your repositories at a glance
+.br
+- \fB\fBgit cd\fR\fP - Fuzzy find and jump to a repository directory
 
 .PP
 \fINote: Both commands are provided by a single \fBgit-get\fR binary that automatically detects how it was invoked (either directly or via symlink).\fP
@@ -270,14 +272,59 @@ git get <REPOSITORY> [flags]
 Display repository status with multiple output formats:
 
 .EX
-git list [flags]
+git list [QUERY] [flags]
 .EE
+
+.PP
+\fBArguments:\fP
+- \fB[QUERY]\fR - Optional fuzzy search pattern to filter repositories by path.
 
 .PP
 \fBFlags:\fP
 - \fB-f, --fetch\fR - Fetch from remotes before listing
 - \fB-o, --out <format>\fR - Output format: tree, flat, or dump (default: tree)
 - \fB-r, --root <path>\fR - Root directory to scan. Can be specified multiple times to scan multiple directories. (default: ~/repositories)
+- \fB-h, --help\fR - Show help
+- \fB-v, --version\fR - Show version
+
+.SS git cd
+Fuzzy find a repository and print its absolute path. Since a child process cannot change the current working directory of the shell, this command prints the path to stdout.
+
+To use it effectively, add a shell function or alias to your shell profile:
+
+\fBBash/Zsh:\fP
+.EX
+gcd() {
+  local target
+  target=$(git-get cd "$@")
+  if [ -n "$target" ]; then
+    cd "$target"
+  fi
+}
+.EE
+
+\fBFish:\fP
+.EX
+function gcd
+  set target (git-get cd $argv)
+  if test -n "$target"
+    cd $target
+  end
+end
+.EE
+
+\fBUsage:\fP
+.EX
+git cd [QUERY] [flags]
+.EE
+
+.PP
+\fBArguments:\fP
+- \fB[QUERY]\fR - Optional fuzzy search pattern. If multiple repositories match, an interactive fuzzy finder will be shown.
+
+.PP
+\fBFlags:\fP
+- \fB-r, --root <path>\fR - Root directory to scan. Can be specified multiple times.
 - \fB-h, --help\fR - Show help
 - \fB-v, --version\fR - Show version
 

@@ -8,6 +8,7 @@ import (
 	"github.com/grdl/git-get/pkg/cfg"
 	"github.com/grdl/git-get/pkg/git"
 	"github.com/grdl/git-get/pkg/out"
+	"github.com/sahilm/fuzzy"
 )
 
 var ErrInvalidOutput = errors.New("invalid output format")
@@ -17,6 +18,7 @@ type ListCfg struct {
 	Fetch  bool
 	Output string
 	Roots  []string
+	Query  string
 }
 
 // List executes the "git list" command.
@@ -27,6 +29,23 @@ func List(conf *ListCfg) error {
 	}
 
 	statuses := finder.LoadAll(conf.Fetch)
+
+	// Filter statuses if query is provided
+	if conf.Query != "" {
+		paths := make([]string, len(statuses))
+		for i, s := range statuses {
+			paths[i] = s.Path()
+		}
+
+		matches := fuzzy.Find(conf.Query, paths)
+		filteredStatuses := make([]*git.Status, len(matches))
+
+		for i, match := range matches {
+			filteredStatuses[i] = statuses[match.Index]
+		}
+
+		statuses = filteredStatuses
+	}
 
 	printables := make([]out.Printable, len(statuses))
 

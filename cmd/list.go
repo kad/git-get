@@ -15,10 +15,11 @@ import (
 
 func newListCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "git list",
+		Use:          "git list [QUERY]",
 		Short:        "List all repositories cloned by 'git get' and their status.",
+		Long:         "List all repositories cloned by 'git get' and their status. If [QUERY] is provided, filter repositories using fuzzy search.",
 		RunE:         runListCommand,
-		Args:         cobra.NoArgs,
+		Args:         cobra.MaximumNArgs(1),
 		Version:      cfg.Version(),
 		SilenceUsage: true, // We don't want to show usage on legit errors (eg, wrong path, repo already existing etc.)
 	}
@@ -36,13 +37,19 @@ func newListCommand() *cobra.Command {
 	return cmd
 }
 
-func runListCommand(_ *cobra.Command, _ []string) error {
+func runListCommand(_ *cobra.Command, args []string) error {
 	cfg.Expand(cfg.KeyReposRoot)
+
+	var query string
+	if len(args) > 0 {
+		query = args[0]
+	}
 
 	config := &pkg.ListCfg{
 		Fetch:  viper.GetBool(cfg.KeyFetch),
 		Output: viper.GetString(cfg.KeyOutput),
 		Roots:  viper.GetStringSlice(cfg.KeyReposRoot),
+		Query:  query,
 	}
 
 	return pkg.List(config)

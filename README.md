@@ -37,11 +37,12 @@ A tool to clone, organize, and manage multiple Git repositories with an automati
 
 **git-get** solves the problem of manually organizing multiple Git repositories. Instead of scattered clones in random directories, it creates a clean, predictable directory structure based on repository URLs, similar to Go's `go get` command.
 
-It provides two commands through a single binary:
+It provides three commands through a single binary:
 - **`git get`** - Clones repositories into an organized directory tree  
 - **`git list`** - Shows the status of all your repositories at a glance
+- **`git cd`** - Fuzzy find and jump to a repository directory
 
-*Note: Both commands are provided by a single `git-get` binary that automatically detects how it was invoked (either directly or via symlink).*
+*Note: All commands are provided by a single `git-get` binary that automatically detects how it was invoked (either directly or via symlink).*
 
 ![Example](./docs/example.svg)
 
@@ -189,13 +190,56 @@ git get <REPOSITORY> [flags]
 Display repository status with multiple output formats:
 
 ```bash
-git list [flags]
+git list [QUERY] [flags]
 ```
+
+**Arguments:**
+- `[QUERY]` - Optional fuzzy search pattern to filter repositories by path.
 
 **Flags:**
 - `-f, --fetch` - Fetch from remotes before listing
 - `-o, --out <format>` - Output format: tree, flat, or dump (default: tree)
 - `-r, --root <path>` - Root directory to scan. Can be specified multiple times to scan multiple directories. (default: ~/repositories)
+- `-h, --help` - Show help
+- `-v, --version` - Show version
+
+### git cd
+
+Fuzzy find a repository and print its absolute path. Since a child process cannot change the current working directory of the shell, this command prints the path to stdout.
+
+To use it effectively, add a shell function or alias to your shell profile:
+
+**Bash/Zsh:**
+```bash
+gcd() {
+  local target
+  target=$(git-get cd "$@")
+  if [ -n "$target" ]; then
+    cd "$target"
+  fi
+}
+```
+
+**Fish:**
+```fish
+function gcd
+  set target (git-get cd $argv)
+  if test -n "$target"
+    cd $target
+  end
+end
+```
+
+**Usage:**
+```bash
+git cd [QUERY] [flags]
+```
+
+**Arguments:**
+- `[QUERY]` - Optional fuzzy search pattern. If multiple repositories match, an interactive fuzzy finder will be shown.
+
+**Flags:**
+- `-r, --root <path>` - Root directory to scan. Can be specified multiple times.
 - `-h, --help` - Show help
 - `-v, --version` - Show version
 
