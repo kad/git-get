@@ -37,7 +37,9 @@ func List(conf *ListCfg) error {
 			paths[i] = s.Path()
 		}
 
-		matches := fuzzy.Find(conf.Query, paths)
+		searchPaths := getRelativePaths(conf.Roots, paths)
+
+		matches := fuzzy.Find(conf.Query, searchPaths)
 		filteredStatuses := make([]*git.Status, len(matches))
 
 		for i, match := range matches {

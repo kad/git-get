@@ -288,30 +288,23 @@ git list [QUERY] [flags]
 - \fB-v, --version\fR - Show version
 
 .SS git cd
-Fuzzy find a repository and print its absolute path. Since a child process cannot change the current working directory of the shell, this command prints the path to stdout.
+Fuzzy find a repository and jump to its directory. \fBNote:\fP Since a child process cannot change the shell's directory, a shell function wrapper is required.
 
-To use it effectively, add a shell function or alias to your shell profile:
+To enable this, add the following to your shell profile:
 
 \fBBash/Zsh:\fP
+Add to \fB~/.bashrc\fR or \fB~/.zshrc\fR:
 .EX
-gcd() {
-  local target
-  target=$(git-get cd "$@")
-  if [ -n "$target" ]; then
-    cd "$target"
-  fi
-}
+eval "$(git-get shell-init bash)"
 .EE
 
 \fBFish:\fP
+Add to \fB~/.config/fish/config.fish\fR:
 .EX
-function gcd
-  set target (git-get cd $argv)
-  if test -n "$target"
-    cd $target
-  end
-end
+git-get shell-init fish | source
 .EE
+
+This setup provides both a \fBgitcd\fR helper and a \fBgit cd\fR override that will correctly change your shell's current working directory.
 
 \fBUsage:\fP
 .EX

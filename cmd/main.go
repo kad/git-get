@@ -29,7 +29,7 @@ func determineCommand() (string, []string) {
 }
 
 func handleGitGetInvocation() (string, []string) {
-	if len(os.Args) > 1 && (os.Args[1] == "get" || os.Args[1] == "list" || os.Args[1] == "cd") {
+	if len(os.Args) > 1 && (os.Args[1] == "get" || os.Args[1] == "list" || os.Args[1] == "cd" || os.Args[1] == "shell-init") {
 		return os.Args[1], os.Args[2:]
 	}
 
@@ -56,6 +56,8 @@ func executeCommand(command string, args []string) {
 		runList(args)
 	case "cd":
 		runCd(args)
+	case "shell-init":
+		runInit(args)
 	default:
 		runGet(os.Args[1:])
 	}

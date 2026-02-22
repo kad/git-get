@@ -1,9 +1,11 @@
 package pkg
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/grdl/git-get/pkg/git"
 	"github.com/ktr0731/go-fuzzyfinder"
@@ -30,23 +32,29 @@ func Cd(conf *CdCfg) error {
 
 	repos := finder.LoadAll(false)
 
-	paths := make([]string, len(repos))
+	absPaths := make([]string, len(repos))
 	for i, r := range repos {
-		paths[i] = r.Path()
+		absPaths[i] = r.Path()
 	}
+
+	searchPaths := getRelativePaths(conf.Roots, absPaths)
 
 	var selectedPath string
 
 	var err error
 
 	if conf.Query != "" {
-		selectedPath, err = findSelectedPathWithQuery(conf.Query, paths)
+		selectedPath, err = findSelectedPathWithQuery(conf.Query, searchPaths, absPaths)
 	} else {
-		selectedPath, err = findSelectedPathNoQuery(paths)
+		selectedPath, err = findSelectedPathNoQuery(absPaths)
 	}
 
 	if err != nil {
 		return err
+	}
+
+	if isStdoutTerminal() {
+		return startSubshell(selectedPath)
 	}
 
 	fmt.Println(selectedPath)
@@ -54,23 +62,97 @@ func Cd(conf *CdCfg) error {
 	return nil
 }
 
-func findSelectedPathWithQuery(query string, paths []string) (string, error) {
-	matches := fuzzy.Find(query, paths)
+// Cmd interface defines methods for exec.Cmd that we use.
+type Cmd interface {
+	Run() error
+	SetDir(dir string)
+	SetStdin(stdin *os.File)
+	SetStdout(stdout *os.File)
+	SetStderr(stderr *os.File)
+}
+
+type commander interface {
+	CommandContext(ctx context.Context, name string, arg ...string) Cmd
+}
+
+type osCmd struct {
+	*exec.Cmd
+}
+
+func (o *osCmd) SetDir(dir string) {
+	o.Dir = dir
+}
+
+func (o *osCmd) SetStdin(stdin *os.File) {
+	o.Stdin = stdin
+}
+
+func (o *osCmd) SetStdout(stdout *os.File) {
+	o.Stdout = stdout
+}
+
+func (o *osCmd) SetStderr(stderr *os.File) {
+	o.Stderr = stderr
+}
+
+type osCommander struct{}
+
+//nolint:ireturn
+func (osCommander) CommandContext(ctx context.Context, name string, arg ...string) Cmd {
+	return &osCmd{exec.CommandContext(ctx, name, arg...)}
+}
+
+var defaultCommander commander = &osCommander{}
+
+func startSubshell(path string) error {
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "/bin/sh"
+	}
+
+	cmd := defaultCommander.CommandContext(context.Background(), shell)
+	cmd.SetDir(path)
+	cmd.SetStdin(os.Stdin)
+	cmd.SetStdout(os.Stdout)
+	cmd.SetStderr(os.Stderr)
+
+	fmt.Fprintf(os.Stderr, "Starting subshell in %s (type 'exit' to return)\n", path)
+
+	return cmd.Run()
+}
+
+func isStdoutTerminal() bool {
+	fileInfo, _ := os.Stdout.Stat()
+
+	return (fileInfo.Mode() & os.ModeCharDevice) != 0
+}
+
+func findSelectedPathWithQuery(query string, searchPaths []string, absPaths []string) (string, error) {
+	matches := fuzzy.Find(query, searchPaths)
 	if len(matches) == 0 {
 		return "", fmt.Errorf("%w: '%s'", ErrNoMatchFound, query)
 	}
 
 	if len(matches) == 1 {
-		return paths[matches[0].Index], nil
+		return absPaths[matches[0].Index], nil
 	}
 
 	// Multiple matches, if interactive use fuzzyfinder
 	if isInteractive() {
-		return findInteractive(matches, paths)
+		// Use relative paths for display in fuzzyfinder too, it's cleaner
+		filteredSearchPaths := make([]string, len(matches))
+
+		filteredAbsPaths := make([]string, len(matches))
+		for i, m := range matches {
+			filteredSearchPaths[i] = searchPaths[m.Index]
+			filteredAbsPaths[i] = absPaths[m.Index]
+		}
+
+		return findInteractive(filteredSearchPaths, filteredAbsPaths)
 	}
 
 	// Non-interactive: pick the best match (the first one from fuzzy.Find).
-	return paths[matches[0].Index], nil
+	return absPaths[matches[0].Index], nil
 }
 
 func findSelectedPathNoQuery(paths []string) (string, error) {
@@ -91,27 +173,21 @@ func findSelectedPathNoQuery(paths []string) (string, error) {
 	return paths[idx], nil
 }
 
-func findInteractive(matches fuzzy.Matches, paths []string) (string, error) {
-	// Filter paths to matches only for fuzzyfinder to start with
-	filteredPaths := make([]string, len(matches))
-	for i, m := range matches {
-		filteredPaths[i] = paths[m.Index]
-	}
-
+func findInteractive(searchPaths []string, absPaths []string) (string, error) {
 	idx, err := fuzzyfinder.Find(
-		filteredPaths,
+		searchPaths,
 		func(i int) string {
-			return filteredPaths[i]
+			return searchPaths[i]
 		},
 	)
 	if err != nil {
 		return "", fmt.Errorf("fuzzyfinder failed: %w", err)
 	}
 
-	return filteredPaths[idx], nil
+	return absPaths[idx], nil
 }
 
-func isInteractive() bool {
+var isInteractive = func() bool {
 	fileInfo, _ := os.Stdin.Stat()
 
 	return (fileInfo.Mode() & os.ModeCharDevice) != 0

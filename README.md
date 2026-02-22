@@ -205,30 +205,21 @@ git list [QUERY] [flags]
 
 ### git cd
 
-Fuzzy find a repository and print its absolute path. Since a child process cannot change the current working directory of the shell, this command prints the path to stdout.
+Fuzzy find a repository and jump to its directory. **Note:** Since a child process cannot change the shell's directory, a shell function wrapper is required.
 
-To use it effectively, add a shell function or alias to your shell profile:
+To enable this, add the following to your shell profile:
 
-**Bash/Zsh:**
+**Bash/Zsh:** Add to `~/.bashrc` or `~/.zshrc`:
 ```bash
-gcd() {
-  local target
-  target=$(git-get cd "$@")
-  if [ -n "$target" ]; then
-    cd "$target"
-  fi
-}
+eval "$(git-get shell-init bash)"
 ```
 
-**Fish:**
+**Fish:** Add to `~/.config/fish/config.fish`:
 ```fish
-function gcd
-  set target (git-get cd $argv)
-  if test -n "$target"
-    cd $target
-  end
-end
+git-get shell-init fish | source
 ```
+
+This setup provides both a `gitcd` helper and a `git cd` override that will correctly change your shell's current working directory.
 
 **Usage:**
 ```bash

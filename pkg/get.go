@@ -51,14 +51,7 @@ func cloneSingleRepo(conf *GetCfg) error {
 	for _, root := range conf.Roots {
 		path := filepath.Join(root, pathSuffix)
 		if exists, _ := git.Exists(path); exists {
-			opts := &git.CloneOpts{
-				URL:    url,
-				Path:   path,
-				Branch: conf.Branch,
-			}
-			_, err = git.Clone(opts)
-
-			return err
+			return nil
 		}
 	}
 
@@ -97,6 +90,29 @@ func selectBestRoot(roots []string, pathSuffix string) string {
 	}
 
 	return roots[0]
+}
+
+// getRelativePaths returns a slice of paths relative to their respective roots.
+func getRelativePaths(roots []string, paths []string) []string {
+	relPaths := make([]string, len(paths))
+
+	for idx, path := range paths {
+		relPath := path
+
+		for _, root := range roots {
+			if strings.HasPrefix(path, root) {
+				if p, err := filepath.Rel(root, path); err == nil {
+					relPath = p
+
+					break
+				}
+			}
+		}
+
+		relPaths[idx] = relPath
+	}
+
+	return relPaths
 }
 
 func cloneDumpFile(conf *GetCfg) error {
