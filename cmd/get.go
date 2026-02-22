@@ -54,18 +54,13 @@ func runGetCommand(_ *cobra.Command, args []string) error {
 
 	roots := viper.GetStringSlice(cfg.KeyReposRoot)
 
-	var root string
-	if len(roots) > 0 {
-		root = roots[0]
-	}
-
 	config := &pkg.GetCfg{
 		Branch:    viper.GetString(cfg.KeyBranch),
 		DefHost:   viper.GetString(cfg.KeyDefaultHost),
 		DefScheme: viper.GetString(cfg.KeyDefaultScheme),
 		Dump:      viper.GetString(cfg.KeyDump),
 		SkipHost:  viper.GetBool(cfg.KeySkipHost),
-		Root:      root,
+		Roots:     roots,
 		URL:       url,
 	}
 
